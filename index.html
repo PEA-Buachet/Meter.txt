@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="th" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meter Config Exporter</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Kanit -->
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Kanit', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Kanit', sans-serif;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #F1F5F9;
+            border-radius: 8px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #CBD5E1;
+            border-radius: 8px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94A3B8;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-100 via-indigo-50/40 to-purple-50/40 text-slate-700 min-h-full flex flex-col">
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-5 right-5 z-50 transform translate-x-full transition-all duration-300 bg-slate-900/95 text-white px-5 py-3.5 rounded-2xl shadow-xl flex items-center space-x-3 text-sm backdrop-blur-md">
+        <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
+        <span id="toast-message">แจ้งเตือน</span>
+    </div>
+
+    <!-- Header Navigation -->
+    <header class="bg-white/80 backdrop-blur-md border-b border-indigo-100 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="w-11 h-11 bg-gradient-to-tr from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center text-white shadow-md shadow-indigo-200">
+                    <i class="fa-solid fa-bolt-lightning text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Meter Config Exporter</h1>
+                    <p class="text-xs text-slate-400 font-light">เครื่องมือจัดการข้อมูลมิเตอร์และส่งออกไฟล์ .txt (6 แบรนด์อัตโนมัติ)</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center space-x-2">
+                <button onclick="loadSampleData()" class="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-xl text-xs font-medium transition flex items-center space-x-1.5 border border-indigo-100">
+                    <i class="fa-solid fa-wand-magic-sparkles text-indigo-500"></i>
+                    <span>โหลดตัวอย่าง</span>
+                </button>
+                <button onclick="clearAllData()" class="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-medium transition flex items-center space-x-1.5 border border-rose-100">
+                    <i class="fa-solid fa-trash-can text-rose-500"></i>
+                    <span>ล้างข้อมูล</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <!-- Form Section (Left Column - 4 cols) -->
+        <section class="lg:col-span-4 bg-white/90 backdrop-blur-sm rounded-3xl shadow-xl shadow-indigo-100/50 border border-indigo-50 p-6 flex flex-col h-fit sticky top-24">
+            <div class="flex items-center justify-between pb-4 mb-5 border-b border-slate-100">
+                <h2 class="text-base font-bold text-slate-800 flex items-center space-x-2">
+                    <span class="w-8 h-8 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center text-xs">
+                        <i class="fa-solid fa-plus"></i>
+                    </span>
+                    <span>เพิ่มข้อมูลมิเตอร์</span>
+                </h2>
+            </div>
+
+            <form id="meter-form" onsubmit="handleFormSubmit(event)" class="space-y-4">
+                <!-- Meter Code / Name -->
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">NAME (รหัสเครื่องวัด) <span class="text-rose-500">*</span></label>
+                    <input type="text" id="meterCode" placeholder="เช่น 6800135405" required
+                        class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-slate-50/50 transition">
+                </div>
+
+                <!-- Bluetooth MAC Address -->
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">BLUETOOTH MAC <span class="text-rose-500">*</span></label>
+                    <input type="text" id="macAddress" placeholder="เช่น C4:CD:82:54:30:F4" required oninput="formatMacAddress(this)" maxlength="17"
+                        class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-800 font-mono uppercase focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-slate-50/50 transition">
+                    <p class="text-[11px] text-slate-400 mt-1">ใส่อักขระ 12 หลัก ระบบเติม `:` ให้อัตโนมัติ</p>
+                </div>
+
+                <!-- Phase Type -->
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Phase Type (ประเภทเฟส)</label>
+                    <select id="phaseType" class="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent bg-slate-50/50 transition cursor-pointer">
+                        <option value="1">1Phase (Single Phase)</option>
+                        <option value="3">3Phase (Three Phase)</option>
+                    </select>
+                </div>
+
+                <!-- Info Box: 6 Passwords -->
+                <div class="bg-gradient-to-br from-indigo-50/70 to-purple-50/70 border border-indigo-100 rounded-2xl p-4 space-y-2">
+                    <div class="flex items-center space-x-2 text-indigo-700 font-medium text-xs">
+                        <i class="fa-solid fa-key"></i>
+                        <span>แบรนด์และรหัสผ่านที่จะขยายอัตโนมัติ:</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-1.5 text-[11px] font-mono text-slate-600">
+                        <div class="bg-white/80 px-2 py-1 rounded-lg border border-indigo-50">TTC: <span class="text-indigo-600 font-bold">00454712</span></div>
+                        <div class="bg-white/80 px-2 py-1 rounded-lg border border-indigo-50">TC KAIFA: <span class="text-indigo-600 font-bold">00000001</span></div>
+                        <div class="bg-white/80 px-2 py-1 rounded-lg border border-indigo-50">IPG: <span class="text-indigo-600 font-bold">00000000</span></div>
+                        <div class="bg-white/80 px-2 py-1 rounded-lg border border-indigo-50">PRECISE: <span class="text-indigo-600 font-bold">00000001</span></div>
+                        <div class="bg-white/80 px-2 py-1 rounded-lg border border-indigo-50">EMAX: <span class="text-indigo-600 font-bold">00454712</span></div>
+                        <div class="bg-white/80 px-2 py-1 rounded-lg border border-indigo-50">KY: <span class="text-indigo-600 font-bold">00000000</span></div>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-medium py-3.5 px-6 rounded-2xl shadow-lg shadow-indigo-200 transition duration-200 flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-plus"></i>
+                    <span>เพิ่มข้อมูลมิเตอร์</span>
+                </button>
+            </form>
+        </section>
+
+        <!-- Right Section: Table & Preview (8 cols) -->
+        <section class="lg:col-span-8 flex flex-col space-y-6">
+            
+            <!-- Tabs Navigation -->
+            <div class="bg-white/80 backdrop-blur-sm p-1.5 rounded-2xl shadow-sm border border-indigo-50 flex space-x-2">
+                <button onclick="switchTab('table')" id="tab-table-btn" class="flex-1 py-2.5 px-4 rounded-xl font-medium text-xs sm:text-sm transition flex items-center justify-center space-x-2 bg-indigo-600 text-white shadow-md shadow-indigo-200">
+                    <i class="fa-solid fa-table-list"></i>
+                    <span>รายการตาราง (<span id="meter-count-badge">0</span> มิเตอร์ / <span id="row-count-badge">0</span> แถว)</span>
+                </button>
+                <button onclick="switchTab('preview')" id="tab-preview-btn" class="flex-1 py-2.5 px-4 rounded-xl font-medium text-xs sm:text-sm transition flex items-center justify-center space-x-2 text-slate-500 hover:bg-slate-50">
+                    <i class="fa-solid fa-file-code"></i>
+                    <span>ดูพรีวิวไฟล์ .txt</span>
+                </button>
+            </div>
+
+            <!-- Tab Content: Table View -->
+            <div id="tab-table-content" class="bg-white/90 backdrop-blur-sm rounded-3xl shadow-xl shadow-indigo-100/50 border border-indigo-50 p-6 flex flex-col flex-grow">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-base">รายการมิเตอร์และรหัสผ่านย่อย</h3>
+                        <p class="text-xs text-slate-400">แสดงชื่อแบรนด์นำหน้ารหัสเครื่องวัดโดยอัตโนมัติโดยไม่มีเลขลำดับ</p>
+                    </div>
+                    <span class="text-[11px] bg-indigo-50 text-indigo-600 px-3 py-1.5 rounded-full border border-indigo-100 font-mono w-fit">
+                        #Name,Bluetooth Mac,Password,Meter Type(1 or 3),Descriptor
+                    </span>
+                </div>
+
+                <!-- Empty State -->
+                <div id="empty-state" class="flex flex-col items-center justify-center py-16 text-center">
+                    <div class="w-16 h-16 bg-gradient-to-tr from-indigo-100 to-purple-100 text-indigo-400 rounded-3xl flex items-center justify-center mb-3 text-2xl shadow-inner">
+                        <i class="fa-solid fa-folder-open"></i>
+                    </div>
+                    <p class="text-slate-600 font-medium">ยังไม่มีข้อมูลมิเตอร์ในระบบ</p>
+                    <p class="text-slate-400 text-xs mt-1">กรอกข้อมูล NAME และ BLUETOOTH MAC ด้านซ้ายเพื่อเริ่มบันทึก</p>
+                </div>
+
+                <!-- Table Container -->
+                <div id="table-container" class="hidden overflow-x-auto flex-grow max-h-[500px] overflow-y-auto rounded-2xl border border-slate-100">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider sticky top-0 border-b border-slate-100 z-10">
+                            <tr>
+                                <th class="py-3 px-4 font-semibold">NAME (Brand + Code)</th>
+                                <th class="py-3 px-4 font-semibold">BLUETOOTH MAC</th>
+                                <th class="py-3 px-4 font-semibold">PASSWORD</th>
+                                <th class="py-3 px-3 font-semibold text-center">TYPE</th>
+                                <th class="py-3 px-4 font-semibold">DESCRIPTOR</th>
+                                <th class="py-3 px-3 font-semibold text-center w-16">ลบ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="meter-table-body" class="divide-y divide-slate-100 text-xs text-slate-700">
+                            <!-- Rows generated via JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Footer Action Buttons -->
+                <div id="table-footer" class="hidden mt-6 pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <span id="total-items-text" class="text-xs text-slate-400 font-medium">รวมทั้งหมด 0 มิเตอร์ (0 แถวในไฟล์ .txt)</span>
+                    <div class="flex space-x-2 w-full sm:w-auto">
+                        <button onclick="switchTab('preview')" class="flex-1 sm:flex-none px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-semibold transition flex items-center justify-center space-x-1.5">
+                            <i class="fa-solid fa-eye"></i>
+                            <span>พรีวิวไฟล์</span>
+                        </button>
+                        <button onclick="exportTxtFile()" class="flex-1 sm:flex-none px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-emerald-200 transition flex items-center justify-center space-x-1.5">
+                            <i class="fa-solid fa-download"></i>
+                            <span>ดาวน์โหลด .txt</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Content: Text File Preview -->
+            <div id="tab-preview-content" class="hidden bg-white/90 backdrop-blur-sm rounded-3xl shadow-xl shadow-indigo-100/50 border border-indigo-50 p-6 flex flex-col flex-grow">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-base">ตัวอย่างเนื้อหาไฟล์ .txt</h3>
+                        <p class="text-xs text-slate-400">รูปแบบไฟล์เมื่อทำการดาวน์โหลด</p>
+                    </div>
+                    <button onclick="copyToClipboard()" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-xl text-xs font-semibold transition flex items-center space-x-1 border border-indigo-100">
+                        <i class="fa-solid fa-copy"></i>
+                        <span>คัดลอกข้อความ</span>
+                    </button>
+                </div>
+
+                <div class="relative flex-grow">
+                    <textarea id="txt-preview-area" readonly rows="14" class="w-full bg-slate-900 text-emerald-400 font-mono text-xs sm:text-sm p-4 rounded-2xl border border-slate-800 focus:outline-none resize-none shadow-inner leading-relaxed"></textarea>
+                </div>
+
+                <div class="mt-6 pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <span class="text-xs text-slate-400">Header: <code class="text-slate-600 font-mono bg-slate-100 px-1.5 py-0.5 rounded">#Name,Bluetooth Mac,Password,Meter Type(1 or 3),Descriptor</code></span>
+                    <button onclick="exportTxtFile()" class="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-emerald-200 transition flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-file-arrow-down text-sm"></i>
+                        <span>ดาวน์โหลดไฟล์ (.txt)</span>
+                    </button>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-auto py-4 text-center text-xs text-slate-400 border-t border-slate-100 bg-white/50 backdrop-blur-sm">
+        <p>Meter Configuration Exporter • รองรับการสร้างไฟล์ข้อมูลตั้งค่ามิเตอร์มาตรฐาน TXT</p>
+    </footer>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        const BRAND_PASSWORDS = [
+            { brand: "TTC", pass: "00454712" },
+            { brand: "TC KAIFA", pass: "00000001" },
+            { brand: "IPG", pass: "00000000" },
+            { brand: "PRECISE", pass: "00000001" },
+            { brand: "EMAX", pass: "00454712" },
+            { brand: "KY", pass: "00000000" }
+        ];
+
+        let meters = [];
+
+        window.onload = function() {
+            loadFromLocalStorage();
+            updateUI();
+        };
+
+        function formatMacAddress(input) {
+            let val = input.value.replace(/[^0-9A-Fa-f]/g, '').toUpperCase();
+            let formatted = '';
+            for (let i = 0; i < val.length && i < 12; i++) {
+                if (i > 0 && i % 2 === 0) {
+                    formatted += ':';
+                }
+                formatted += val[i];
+            }
+            input.value = formatted;
+        }
+
+        function switchTab(tabName) {
+            const tableContent = document.getElementById('tab-table-content');
+            const previewContent = document.getElementById('tab-preview-content');
+            const tableBtn = document.getElementById('tab-table-btn');
+            const previewBtn = document.getElementById('tab-preview-btn');
+
+            if (tabName === 'table') {
+                tableContent.classList.remove('hidden');
+                previewContent.classList.add('hidden');
+                tableBtn.className = "flex-1 py-2.5 px-4 rounded-xl font-medium text-xs sm:text-sm transition flex items-center justify-center space-x-2 bg-indigo-600 text-white shadow-md shadow-indigo-200";
+                previewBtn.className = "flex-1 py-2.5 px-4 rounded-xl font-medium text-xs sm:text-sm transition flex items-center justify-center space-x-2 text-slate-500 hover:bg-slate-50";
+            } else {
+                tableContent.classList.add('hidden');
+                previewContent.classList.remove('hidden');
+                previewBtn.className = "flex-1 py-2.5 px-4 rounded-xl font-medium text-xs sm:text-sm transition flex items-center justify-center space-x-2 bg-indigo-600 text-white shadow-md shadow-indigo-200";
+                tableBtn.className = "flex-1 py-2.5 px-4 rounded-xl font-medium text-xs sm:text-sm transition flex items-center justify-center space-x-2 text-slate-500 hover:bg-slate-50";
+                updateTxtPreview();
+            }
+        }
+
+        function handleFormSubmit(event) {
+            event.preventDefault();
+
+            const meterCode = document.getElementById('meterCode').value.trim();
+            const macAddress = document.getElementById('macAddress').value.trim();
+            const phaseType = document.getElementById('phaseType').value;
+            const descriptor = phaseType === "1" ? "Single Phase" : "Three Phase";
+
+            if (!meterCode) {
+                showToast("กรุณากรอกรหัสเครื่องวัด (NAME)", "error");
+                return;
+            }
+
+            if (macAddress.length < 17) {
+                showToast("Bluetooth MAC Address ไม่ครบ 12 หลัก", "error");
+                return;
+            }
+
+            const newMeter = {
+                id: Date.now(),
+                meterCode,
+                macAddress,
+                phaseType,
+                descriptor
+            };
+
+            meters.push(newMeter);
+            saveToLocalStorage();
+            resetForm();
+            updateUI();
+            showToast("เพิ่มข้อมูลมิเตอร์สำเร็จ", "success");
+        }
+
+        function resetForm() {
+            document.getElementById('meter-form').reset();
+            document.getElementById('meterCode').focus();
+        }
+
+        function deleteMeter(meterId) {
+            meters = meters.filter(m => m.id !== meterId);
+            saveToLocalStorage();
+            updateUI();
+            showToast("ลบข้อมูลมิเตอร์เรียบร้อยแล้ว", "info");
+        }
+
+        function clearAllData() {
+            if (meters.length === 0) {
+                // Clear input form directly even if no meters saved
+                resetForm();
+                showToast("ล้างข้อมูลฟอร์มกรอกเรียบร้อย", "info");
+                return;
+            }
+            if (confirm("คุณต้องการลบรายการมิเตอร์ทั้งหมดและล้างฟอร์มกรอกใช่หรือไม่?")) {
+                meters = [];
+                localStorage.removeItem('meter_exporter_data_v3');
+                resetForm();
+                updateUI();
+                showToast("ล้างข้อมูลทั้งหมดเรียบร้อยแล้ว", "info");
+            }
+        }
+
+        function loadSampleData() {
+            meters = [
+                { id: 101, meterCode: "6800135405", macAddress: "C4:CD:82:54:30:F4", phaseType: "1", descriptor: "Single Phase" }
+            ];
+            saveToLocalStorage();
+            updateUI();
+            showToast("โหลดข้อมูลตัวอย่างสำเร็จ", "success");
+        }
+
+        function getFlattenedRows() {
+            let rows = [];
+            meters.forEach(m => {
+                BRAND_PASSWORDS.forEach(p => {
+                    rows.push({
+                        meterId: m.id,
+                        brandName: `${p.brand} ${m.meterCode}`,
+                        macAddress: m.macAddress,
+                        brand: p.brand,
+                        password: p.pass,
+                        phaseType: m.phaseType,
+                        descriptor: m.descriptor
+                    });
+                });
+            });
+            return rows;
+        }
+
+        function updateUI() {
+            const meterCountBadge = document.getElementById('meter-count-badge');
+            const rowCountBadge = document.getElementById('row-count-badge');
+            const totalItemsText = document.getElementById('total-items-text');
+            const emptyState = document.getElementById('empty-state');
+            const tableContainer = document.getElementById('table-container');
+            const tableFooter = document.getElementById('table-footer');
+            const tbody = document.getElementById('meter-table-body');
+
+            const flattenedRows = getFlattenedRows();
+
+            meterCountBadge.textContent = meters.length;
+            rowCountBadge.textContent = flattenedRows.length;
+            totalItemsText.textContent = `รวมทั้งหมด ${meters.length} มิเตอร์ (${flattenedRows.length} แถวในไฟล์ .txt)`;
+
+            if (meters.length === 0) {
+                emptyState.classList.remove('hidden');
+                tableContainer.classList.add('hidden');
+                tableFooter.classList.add('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                tableContainer.classList.remove('hidden');
+                tableFooter.classList.remove('hidden');
+
+                tbody.innerHTML = '';
+                
+                let currentMeterId = null;
+                flattenedRows.forEach((row, idx) => {
+                    const tr = document.createElement('tr');
+                    const isNewMeterGroup = currentMeterId !== row.meterId;
+                    if (isNewMeterGroup) {
+                        currentMeterId = row.meterId;
+                    }
+
+                    tr.className = isNewMeterGroup 
+                        ? "border-t-2 border-slate-200/80 hover:bg-slate-50/80 transition" 
+                        : "hover:bg-slate-50/80 transition";
+
+                    tr.innerHTML = `
+                        <td class="py-2.5 px-4 font-semibold text-slate-800 font-mono">${row.brandName}</td>
+                        <td class="py-2.5 px-4 font-mono text-slate-600 text-xs">${row.macAddress}</td>
+                        <td class="py-2.5 px-4 font-mono">
+                            <span class="text-indigo-600 font-bold">${row.password}</span>
+                            <span class="text-[10px] text-slate-400 font-sans ml-1.5 border border-slate-200 px-1.5 py-0.5 rounded bg-white">${row.brand}</span>
+                        </td>
+                        <td class="py-2.5 px-3 text-center font-mono font-semibold text-slate-700">${row.phaseType}</td>
+                        <td class="py-2.5 px-4">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium ${row.phaseType === '1' ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-purple-50 text-purple-600 border border-purple-100'}">
+                                ${row.descriptor}
+                            </span>
+                        </td>
+                        <td class="py-2.5 px-3 text-center">
+                            ${(idx % 6 === 0) ? `
+                                <button onclick="deleteMeter(${row.meterId})" class="p-1.5 text-slate-300 hover:text-rose-500 rounded-lg transition" title="ลบมิเตอร์นี้">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            ` : ''}
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            updateTxtPreview();
+        }
+
+        function generateTxtContent() {
+            let lines = ["#Name,Bluetooth Mac,Password,Meter Type(1 or 3),Descriptor"];
+            const flattenedRows = getFlattenedRows();
+
+            flattenedRows.forEach(r => {
+                lines.push(`${r.brandName},${r.macAddress},${r.password},${r.phaseType},${r.descriptor}`);
+            });
+
+            return lines.join('\r\n');
+        }
+
+        function updateTxtPreview() {
+            const textarea = document.getElementById('txt-preview-area');
+            textarea.value = generateTxtContent();
+        }
+
+        function exportTxtFile() {
+            if (meters.length === 0) {
+                showToast("กรุณากรอกข้อมูลมิเตอร์อย่างน้อย 1 รายการก่อนดาวน์โหลด", "error");
+                return;
+            }
+
+            const content = generateTxtContent();
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `meter_config_${new Date().toISOString().slice(0, 10)}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            showToast("ดาวน์โหลดไฟล์ .txt เรียบร้อยแล้ว", "success");
+        }
+
+        function copyToClipboard() {
+            const textarea = document.getElementById('txt-preview-area');
+            textarea.select();
+            textarea.setSelectionRange(0, 99999);
+
+            try {
+                document.execCommand('copy');
+                showToast("คัดลอกเนื้อหาไฟล์ไปยังคลิปบอร์ดเรียบร้อย", "success");
+            } catch (err) {
+                showToast("ไม่สามารถคัดลอกข้อความได้", "error");
+            }
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('meter_exporter_data_v3', JSON.stringify(meters));
+        }
+
+        function loadFromLocalStorage() {
+            const data = localStorage.getItem('meter_exporter_data_v3');
+            if (data) {
+                try {
+                    meters = JSON.parse(data);
+                } catch (e) {
+                    meters = [];
+                }
+            } else {
+                meters = [
+                    { id: 1, meterCode: "6800135405", macAddress: "C4:CD:82:54:30:F4", phaseType: "1", descriptor: "Single Phase" }
+                ];
+            }
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toast-message');
+            const toastIcon = document.getElementById('toast-icon');
+
+            toastMessage.textContent = message;
+            if (type === 'success') {
+                toastIcon.className = "fa-solid fa-circle-check text-emerald-400 text-lg";
+            } else if (type === 'error') {
+                toastIcon.className = "fa-solid fa-circle-exclamation text-rose-400 text-lg";
+            } else {
+                toastIcon.className = "fa-solid fa-circle-info text-blue-400 text-lg";
+            }
+
+            toast.classList.remove('translate-x-full');
+            setTimeout(() => {
+                toast.classList.add('translate-x-full');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
