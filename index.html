@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meter Config Exporter</title>
+    <title>Meter-E File Text</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Font Awesome Icons -->
@@ -65,9 +65,30 @@
 <body class="theme-bright-pastel min-h-full flex flex-col">
 
     <!-- Toast Notification -->
-    <div id="toast" class="fixed top-5 right-5 z-50 transform translate-x-full transition-all duration-300 bg-slate-900/95 text-white px-5 py-3.5 rounded-2xl shadow-xl flex items-center space-x-3 text-sm backdrop-blur-md">
+    <div id="toast" class="fixed top-5 right-5 z-[80] transform translate-x-full transition-all duration-300 bg-slate-900/95 text-white px-5 py-3.5 rounded-2xl shadow-xl flex items-center space-x-3 text-sm backdrop-blur-md">
         <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
         <span id="toast-message">แจ้งเตือน</span>
+    </div>
+
+    <!-- Custom Confirmation Modal (Replaces confirm()) - z-index increased to appear above brand modal -->
+    <div id="confirm-modal" class="fixed inset-0 z-[70] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-200">
+        <div class="bg-white dark:bg-slate-900 border border-indigo-100 dark:border-slate-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4 transform scale-95 transition-transform duration-200" id="confirm-modal-box">
+            <div class="w-12 h-12 bg-rose-100 dark:bg-rose-950/60 text-rose-500 rounded-2xl flex items-center justify-center text-xl mx-auto">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <div class="text-center space-y-1">
+                <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base" id="confirm-title">ยืนยันการทำรายการ</h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400" id="confirm-desc">คุณต้องการลบรายการมิเตอร์ทั้งหมดใช่หรือไม่?</p>
+            </div>
+            <div class="flex space-x-3 pt-2">
+                <button onclick="closeConfirmModal(false)" class="flex-1 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-semibold transition">
+                    ยกเลิก
+                </button>
+                <button id="confirm-ok-btn" class="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-semibold shadow-md shadow-rose-200 dark:shadow-none transition">
+                    ยืนยันลบ
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Header Navigation -->
@@ -78,15 +99,15 @@
                     <i class="fa-solid fa-bolt-lightning text-xl"></i>
                 </div>
                 <div>
-                    <h1 class="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">Meter Config Exporter</h1>
-                    <p class="text-xs text-slate-400 font-light">เครื่องมือจัดการข้อมูลมิเตอร์และส่งออกไฟล์ .txt (6 แบรนด์อัตโนมัติ)</p>
+                    <h1 class="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">Meter-E File Text</h1>
+                    <p class="text-xs text-slate-400 font-light">ระบบสร้างไฟล์อ่านมิเตอร์อิเล็กทรอนิกส์</p>
                 </div>
             </div>
             
             <div class="flex items-center space-x-3 flex-wrap justify-center">
                 <!-- Theme Selector Dropdown -->
                 <div class="flex items-center bg-slate-100 dark:bg-slate-800 rounded-xl p-1 border border-slate-200 dark:border-slate-700">
-                    <button onclick="setTheme('bright-pastel')" id="btn-theme-bright" title=" Bright Pastel" class="px-2.5 py-1.5 rounded-lg text-xs font-medium transition flex items-center space-x-1 text-slate-700 dark:text-slate-300">
+                    <button onclick="setTheme('bright-pastel')" id="btn-theme-bright" title="Bright Pastel" class="px-2.5 py-1.5 rounded-lg text-xs font-medium transition flex items-center space-x-1 text-slate-700 dark:text-slate-300">
                         <i class="fa-solid fa-palette text-pink-400"></i>
                         <span class="hidden md:inline">Bright</span>
                     </button>
@@ -104,7 +125,7 @@
                     <i class="fa-solid fa-wand-magic-sparkles text-indigo-500"></i>
                     <span>ตัวอย่าง</span>
                 </button>
-                <button onclick="clearAllData()" class="px-3.5 py-2 bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 rounded-xl text-xs font-medium transition flex items-center space-x-1.5 border border-rose-100 dark:border-rose-900">
+                <button onclick="confirmClearAll()" class="px-3.5 py-2 bg-rose-50 dark:bg-rose-950/50 hover:bg-rose-100 dark:hover:bg-rose-900/50 text-rose-600 dark:text-rose-400 rounded-xl text-xs font-medium transition flex items-center space-x-1.5 border border-rose-100 dark:border-rose-900">
                     <i class="fa-solid fa-trash-can text-rose-500"></i>
                     <span>ล้างข้อมูล</span>
                 </button>
@@ -151,19 +172,20 @@
                     </select>
                 </div>
 
-                <!-- Info Box: 6 Passwords -->
-                <div class="bg-gradient-to-br from-indigo-50/70 to-purple-50/70 dark:from-slate-800/60 dark:to-indigo-950/40 border border-indigo-100 dark:border-slate-700 rounded-2xl p-4 space-y-2">
-                    <div class="flex items-center space-x-2 text-indigo-700 dark:text-indigo-300 font-medium text-xs">
-                        <i class="fa-solid fa-key"></i>
-                        <span>แบรนด์และรหัสผ่านที่จะขยายอัตโนมัติ:</span>
+                <!-- Info Box: Passwords with Manager Button -->
+                <div class="bg-gradient-to-br from-indigo-50/70 to-purple-50/70 dark:from-slate-800/60 dark:to-indigo-950/40 border border-indigo-100 dark:border-slate-700 rounded-2xl p-4 space-y-2.5">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2 text-indigo-700 dark:text-indigo-300 font-medium text-xs">
+                            <i class="fa-solid fa-key"></i>
+                            <span>รหัสผ่านของผลิตภัณฑ์ (<span id="brand-count">6</span>)</span>
+                        </div>
+                        <button type="button" onclick="openBrandModal()" class="text-[11px] bg-indigo-600 hover:bg-indigo-700 text-white px-2.5 py-1 rounded-xl font-medium transition flex items-center space-x-1 shadow-sm">
+                            <i class="fa-solid fa-gear text-[10px]"></i>
+                            <span>จัดการแบรนด์</span>
+                        </button>
                     </div>
-                    <div class="grid grid-cols-2 gap-1.5 text-[11px] font-mono text-slate-600 dark:text-slate-400">
-                        <div class="bg-white/80 dark:bg-slate-800/80 px-2 py-1 rounded-lg border border-indigo-50 dark:border-slate-700">TTC: <span class="text-indigo-600 dark:text-indigo-400 font-bold">00454712</span></div>
-                        <div class="bg-white/80 dark:bg-slate-800/80 px-2 py-1 rounded-lg border border-indigo-50 dark:border-slate-700">TC KAIFA: <span class="text-indigo-600 dark:text-indigo-400 font-bold">00000001</span></div>
-                        <div class="bg-white/80 dark:bg-slate-800/80 px-2 py-1 rounded-lg border border-indigo-50 dark:border-slate-700">IPG: <span class="text-indigo-600 dark:text-indigo-400 font-bold">00000000</span></div>
-                        <div class="bg-white/80 dark:bg-slate-800/80 px-2 py-1 rounded-lg border border-indigo-50 dark:border-slate-700">PRECISE: <span class="text-indigo-600 dark:text-indigo-400 font-bold">00000001</span></div>
-                        <div class="bg-white/80 dark:bg-slate-800/80 px-2 py-1 rounded-lg border border-indigo-50 dark:border-slate-700">EMAX: <span class="text-indigo-600 dark:text-indigo-400 font-bold">00454712</span></div>
-                        <div class="bg-white/80 dark:bg-slate-800/80 px-2 py-1 rounded-lg border border-indigo-50 dark:border-slate-700">KY: <span class="text-indigo-600 dark:text-indigo-400 font-bold">00000000</span></div>
+                    <div id="brand-passwords-list" class="grid grid-cols-2 gap-1.5 text-[11px] font-mono text-slate-600 dark:text-slate-400 max-h-36 overflow-y-auto pr-1">
+                        <!-- Dynamic Brand Passwords List -->
                     </div>
                 </div>
 
@@ -195,7 +217,7 @@
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
                     <div>
                         <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base">รายการมิเตอร์และรหัสผ่านย่อย</h3>
-                        <p class="text-xs text-slate-400">แสดงชื่อแบรนด์นำหน้ารหัสเครื่องวัดโดยอัตโนมัติโดยไม่มีเลขลำดับ</p>
+                        <p class="text-xs text-slate-400">แสดงชื่อแบรนด์นำหน้ารหัสเครื่องวัดโดยอัตโนมัติ</p>
                     </div>
                     <span class="text-[11px] bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 px-3 py-1.5 rounded-full border border-indigo-100 dark:border-indigo-900 font-mono w-fit">
                         #Name,Bluetooth Mac,Password,Meter Type(1 or 3),Descriptor
@@ -281,9 +303,71 @@
         <p>Meter Configuration Exporter • รองรับการสร้างไฟล์ข้อมูลตั้งค่ามิเตอร์มาตรฐาน TXT</p>
     </footer>
 
+    <!-- Brand Password Manager Modal -->
+    <div id="brand-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-200">
+        <div class="bg-white dark:bg-slate-900 border border-indigo-100 dark:border-slate-800 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4 transform scale-95 transition-transform duration-200" id="brand-modal-box">
+            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                <div class="flex items-center space-x-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-sm">
+                        <i class="fa-solid fa-sliders"></i>
+                    </div>
+                    <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base">จัดการรหัสผ่านผลิตภัณฑ์</h3>
+                </div>
+                <button onclick="closeBrandModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Add / Edit Brand Form -->
+            <form id="brand-form" onsubmit="handleSaveBrand(event)" class="bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 flex flex-col sm:flex-row gap-2.5 items-end">
+                <input type="hidden" id="edit-brand-index" value="-1">
+                <div class="flex-1 w-full">
+                    <label class="block text-[11px] font-medium text-slate-600 dark:text-slate-300 mb-1">ชื่อแบรนด์ (Brand)</label>
+                    <input type="text" id="inputBrandName" placeholder="เช่น TTC, IPG" required
+                        class="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs text-slate-800 dark:text-slate-100 uppercase focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white dark:bg-slate-800">
+                </div>
+                <div class="flex-1 w-full">
+                    <label class="block text-[11px] font-medium text-slate-600 dark:text-slate-300 mb-1">รหัสผ่าน (Password)</label>
+                    <input type="text" id="inputBrandPass" placeholder="เช่น 00000000" required
+                        class="w-full rounded-xl border border-slate-200 dark:border-slate-700 px-3 py-2 text-xs font-mono text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white dark:bg-slate-800">
+                </div>
+                <div class="flex space-x-1.5 w-full sm:w-auto">
+                    <button type="submit" id="btn-save-brand" class="flex-1 sm:flex-none px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold transition">
+                        เพิ่ม
+                    </button>
+                    <button type="button" id="btn-cancel-edit-brand" onclick="resetBrandForm()" class="hidden px-3 py-2 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-semibold">
+                        ยกเลิก
+                    </button>
+                </div>
+            </form>
+
+            <!-- Table of Brands -->
+            <div class="max-h-60 overflow-y-auto border border-slate-100 dark:border-slate-800 rounded-2xl">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead class="bg-slate-100 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 uppercase tracking-wider sticky top-0">
+                        <tr>
+                            <th class="py-2.5 px-3">ชื่อแบรนด์</th>
+                            <th class="py-2.5 px-3 font-mono">รหัสผ่าน</th>
+                            <th class="py-2.5 px-3 text-center w-24">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="brand-manager-table-body" class="divide-y divide-slate-100 dark:divide-slate-800 text-slate-700 dark:text-slate-300">
+                        <!-- Dynamic items -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pt-2 flex justify-end">
+                <button onclick="closeBrandModal()" class="px-5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-semibold transition">
+                    ปิด
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- JavaScript Application Logic -->
     <script>
-        const BRAND_PASSWORDS = [
+        let BRAND_PASSWORDS = [
             { brand: "TTC", pass: "00454712" },
             { brand: "TC KAIFA", pass: "00000001" },
             { brand: "IPG", pass: "00000000" },
@@ -297,9 +381,149 @@
 
         window.onload = function() {
             loadThemeFromStorage();
-            loadFromLocalStorage();
+            // Reset to empty state on refresh
+            meters = [];
+            localStorage.removeItem('meter_exporter_data_v3');
+            renderBrandInfoBox();
             updateUI();
         };
+
+        // Render left panel brand passwords list
+        function renderBrandInfoBox() {
+            const container = document.getElementById('brand-passwords-list');
+            const countBadge = document.getElementById('brand-count');
+            countBadge.textContent = BRAND_PASSWORDS.length;
+
+            if (BRAND_PASSWORDS.length === 0) {
+                container.innerHTML = `<div class="col-span-2 text-center text-slate-400 text-xs py-2">ไม่มีรหัสผ่านแบรนด์</div>`;
+                return;
+            }
+
+            container.innerHTML = BRAND_PASSWORDS.map(p => `
+                <div class="bg-white/80 dark:bg-slate-800/80 px-2 py-1 rounded-lg border border-indigo-50 dark:border-slate-700 truncate" title="${p.brand}: ${p.pass}">
+                    ${p.brand}: <span class="text-indigo-600 dark:text-indigo-400 font-bold">${p.pass}</span>
+                </div>
+            `).join('');
+        }
+
+        // Brand Manager Modal Handlers
+        function openBrandModal() {
+            renderBrandManagerTable();
+            resetBrandForm();
+            const modal = document.getElementById('brand-modal');
+            const modalBox = document.getElementById('brand-modal-box');
+
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modalBox.classList.remove('scale-95');
+                modalBox.classList.add('scale-100');
+            }, 10);
+        }
+
+        function closeBrandModal() {
+            const modal = document.getElementById('brand-modal');
+            const modalBox = document.getElementById('brand-modal-box');
+
+            modal.classList.add('opacity-0');
+            modalBox.classList.remove('scale-100');
+            modalBox.classList.add('scale-95');
+
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 200);
+        }
+
+        function renderBrandManagerTable() {
+            const tbody = document.getElementById('brand-manager-table-body');
+            tbody.innerHTML = '';
+
+            if (BRAND_PASSWORDS.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="text-center py-4 text-slate-400">ยังไม่มีรายการแบรนด์</td></tr>`;
+                return;
+            }
+
+            BRAND_PASSWORDS.forEach((item, index) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 dark:hover:bg-slate-800/50";
+                tr.innerHTML = `
+                    <td class="py-2 px-3 font-semibold text-slate-800 dark:text-slate-100">${item.brand}</td>
+                    <td class="py-2 px-3 font-mono text-indigo-600 dark:text-indigo-400 font-bold">${item.pass}</td>
+                    <td class="py-2 px-3 text-center">
+                        <button onclick="editBrandItem(${index})" class="p-1 text-indigo-500 hover:text-indigo-700 mr-1.5" title="แก้ไข">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                        <button onclick="confirmDeleteBrand(${index})" class="p-1 text-rose-400 hover:text-rose-600" title="ลบ">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function handleSaveBrand(event) {
+            event.preventDefault();
+            const brandName = document.getElementById('inputBrandName').value.trim().toUpperCase();
+            const brandPass = document.getElementById('inputBrandPass').value.trim();
+            const editIndex = parseInt(document.getElementById('edit-brand-index').value);
+
+            if (!brandName || !brandPass) {
+                showToast("กรุณากรอกข้อมูลชื่อแบรนด์และรหัสผ่านให้ครบถ้วน", "error");
+                return;
+            }
+
+            if (editIndex === -1) {
+                // Add new
+                BRAND_PASSWORDS.push({ brand: brandName, pass: brandPass });
+                showToast("เพิ่มรหัสผ่านผลิตภัณฑ์ใหม่สำเร็จ", "success");
+            } else {
+                // Edit existing
+                BRAND_PASSWORDS[editIndex] = { brand: brandName, pass: brandPass };
+                showToast("แก้ไขข้อมูลแบรนด์เรียบร้อยแล้ว", "success");
+            }
+
+            resetBrandForm();
+            renderBrandManagerTable();
+            renderBrandInfoBox();
+            updateUI();
+        }
+
+        function editBrandItem(index) {
+            const item = BRAND_PASSWORDS[index];
+            document.getElementById('edit-brand-index').value = index;
+            document.getElementById('inputBrandName').value = item.brand;
+            document.getElementById('inputBrandPass').value = item.pass;
+            document.getElementById('btn-save-brand').textContent = "บันทึก";
+            document.getElementById('btn-cancel-edit-brand').classList.remove('hidden');
+        }
+
+        function confirmDeleteBrand(index) {
+            const item = BRAND_PASSWORDS[index];
+            showConfirmModal(
+                "ยืนยันการลบแบรนด์",
+                `คุณต้องการลบแบรนด์ "${item.brand}" (${item.pass}) ใช่หรือไม่?`,
+                () => {
+                    deleteBrandItem(index);
+                }
+            );
+        }
+
+        function deleteBrandItem(index) {
+            BRAND_PASSWORDS.splice(index, 1);
+            resetBrandForm();
+            renderBrandManagerTable();
+            renderBrandInfoBox();
+            updateUI();
+            showToast("ลบรายการแบรนด์เรียบร้อยแล้ว", "info");
+        }
+
+        function resetBrandForm() {
+            document.getElementById('brand-form').reset();
+            document.getElementById('edit-brand-index').value = "-1";
+            document.getElementById('btn-save-brand').textContent = "เพิ่ม";
+            document.getElementById('btn-cancel-edit-brand').classList.add('hidden');
+        }
 
         function setTheme(themeName) {
             currentTheme = themeName;
@@ -311,7 +535,6 @@
                 document.documentElement.classList.remove('dark');
             }
 
-            // Highlight Theme Buttons
             const btnBright = document.getElementById('btn-theme-bright');
             const btnSoft = document.getElementById('btn-theme-soft');
             const btnDark = document.getElementById('btn-theme-dark');
@@ -401,26 +624,77 @@
             document.getElementById('meterCode').focus();
         }
 
-        function deleteMeter(meterId) {
-            meters = meters.filter(m => m.id !== meterId);
-            saveToLocalStorage();
-            updateUI();
-            showToast("ลบข้อมูลมิเตอร์เรียบร้อยแล้ว", "info");
+        // Custom Modal Confirmation (replacing confirm())
+        function showConfirmModal(title, description, onConfirmCallback) {
+            const modal = document.getElementById('confirm-modal');
+            const modalBox = document.getElementById('confirm-modal-box');
+            const titleEl = document.getElementById('confirm-title');
+            const descEl = document.getElementById('confirm-desc');
+            const okBtn = document.getElementById('confirm-ok-btn');
+
+            titleEl.textContent = title;
+            descEl.textContent = description;
+
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modalBox.classList.remove('scale-95');
+                modalBox.classList.add('scale-100');
+            }, 10);
+
+            // Clone to remove previous event listeners
+            const newOkBtn = okBtn.cloneNode(true);
+            okBtn.parentNode.replaceChild(newOkBtn, okBtn);
+
+            newOkBtn.addEventListener('click', () => {
+                closeConfirmModal(true);
+                onConfirmCallback();
+            });
         }
 
-        function clearAllData() {
+        function closeConfirmModal(confirmed) {
+            const modal = document.getElementById('confirm-modal');
+            const modalBox = document.getElementById('confirm-modal-box');
+
+            modal.classList.add('opacity-0');
+            modalBox.classList.remove('scale-100');
+            modalBox.classList.add('scale-95');
+
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 200);
+        }
+
+        function confirmDeleteMeter(meterId) {
+            showConfirmModal(
+                "ยืนยันการลบมิเตอร์",
+                "คุณต้องการลบข้อมูลมิเตอร์รายการนี้ใช่หรือไม่?",
+                () => {
+                    meters = meters.filter(m => m.id !== meterId);
+                    saveToLocalStorage();
+                    updateUI();
+                    showToast("ลบข้อมูลมิเตอร์เรียบร้อยแล้ว", "info");
+                }
+            );
+        }
+
+        function confirmClearAll() {
             if (meters.length === 0) {
                 resetForm();
                 showToast("ล้างข้อมูลฟอร์มกรอกเรียบร้อย", "info");
                 return;
             }
-            if (confirm("คุณต้องการลบรายการมิเตอร์ทั้งหมดและล้างฟอร์มกรอกใช่หรือไม่?")) {
-                meters = [];
-                localStorage.removeItem('meter_exporter_data_v3');
-                resetForm();
-                updateUI();
-                showToast("ล้างข้อมูลทั้งหมดเรียบร้อยแล้ว", "info");
-            }
+            showConfirmModal(
+                "ยืนยันล้างข้อมูลทั้งหมด",
+                "คุณต้องการลบรายการมิเตอร์ทั้งหมดและล้างฟอร์มกรอกใช่หรือไม่?",
+                () => {
+                    meters = [];
+                    localStorage.removeItem('meter_exporter_data_v3');
+                    resetForm();
+                    updateUI();
+                    showToast("ล้างข้อมูลทั้งหมดเรียบร้อยแล้ว", "info");
+                }
+            );
         }
 
         function loadSampleData() {
@@ -477,6 +751,7 @@
                 tbody.innerHTML = '';
                 
                 let currentMeterId = null;
+                const brandCount = BRAND_PASSWORDS.length;
                 flattenedRows.forEach((row, idx) => {
                     const tr = document.createElement('tr');
                     const isNewMeterGroup = currentMeterId !== row.meterId;
@@ -502,8 +777,8 @@
                             </span>
                         </td>
                         <td class="py-2.5 px-3 text-center">
-                            ${(idx % 6 === 0) ? `
-                                <button onclick="deleteMeter(${row.meterId})" class="p-1.5 text-slate-300 dark:text-slate-600 hover:text-rose-500 dark:hover:text-rose-400 rounded-lg transition" title="ลบมิเตอร์นี้">
+                            ${(brandCount > 0 && idx % brandCount === 0) ? `
+                                <button onclick="confirmDeleteMeter(${row.meterId})" class="p-1.5 text-slate-300 dark:text-slate-600 hover:text-rose-500 dark:hover:text-rose-400 rounded-lg transition" title="ลบมิเตอร์นี้">
                                     <i class="fa-solid fa-trash"></i>
                                 </button>
                             ` : ''}
@@ -570,18 +845,8 @@
         }
 
         function loadFromLocalStorage() {
-            const data = localStorage.getItem('meter_exporter_data_v3');
-            if (data) {
-                try {
-                    meters = JSON.parse(data);
-                } catch (e) {
-                    meters = [];
-                }
-            } else {
-                meters = [
-                    { id: 1, meterCode: "6800135405", macAddress: "C4:CD:82:54:30:F4", phaseType: "1", descriptor: "Single Phase" }
-                ];
-            }
+            // Function retained for operational state compatibility
+            meters = [];
         }
 
         function showToast(message, type = 'success') {
